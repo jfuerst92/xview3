@@ -1,0 +1,13 @@
+{
+  "name": "quick_test",
+  "batch_sizes": [8],
+  "num_workers_list": [4],
+  "epochs": 1,
+  "channels": "vh,vv,bathymetry",
+  "learning_rate": 0.005,
+  "distributed": false,
+  "world_size": 1,
+  "save_checkpoints": false,
+  "profile_memory": true,
+  "profile_gpu": true
+}

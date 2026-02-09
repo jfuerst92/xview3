@@ -1,0 +1,21 @@
+{
+  "name": "amp_only",
+  "description": "Automatic Mixed Precision (FP16) only",
+  "batch_sizes": [8],
+  "num_workers_list": [4],
+  "epochs": 2,
+  "channels": "vh,vv,bathymetry",
+  "learning_rate": 0.005,
+  "distributed": false,
+  "world_size": 1,
+  "save_checkpoints": false,
+  "profile_memory": true,
+  "profile_gpu": true,
+  "optimizations": {
+    "use_amp": true,
+    "use_compile": false,
+    "cudnn_benchmark": false,
+    "persistent_workers": false,
+    "channels_last": false
+  }
+}

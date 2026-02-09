@@ -367,9 +367,12 @@ class XView3Dataset(object):
                 data[fl][data[fl] < -50] = -50
             if self.min_max_norm:
                 # Puts values b/t 0 and 1, as expected by Faster-RCNN implementation
-                data[fl] = (data[fl] - np.min(data[fl])) / (
-                    np.max(data[fl]) - np.min(data[fl])
-                )
+                denom = np.max(data[fl]) - np.min(data[fl])
+                if denom == 0:
+                    # Fill the existing (H,W) array with a constant so its shape is preserved
+                    data[fl][:] = 0.0                # or 0.5 – any value in [0,1]
+                else:
+                    data[fl][:] = (data[fl] - np.min(data[fl])) / denom
 
         # Stacking channels to create multi-band image chip
         img = torch.tensor(np.array([data[fl] for fl in self.channels]))

@@ -1,0 +1,13 @@
+{
+  "name": "dgx_a100_8x80gb",
+  "batch_sizes": [16, 32, 64, 128],
+  "num_workers_list": [8, 16, 24, 32],
+  "epochs": 5,
+  "channels": "vh,vv,bathymetry",
+  "learning_rate": 0.005,
+  "distributed": true,
+  "world_size": 8,
+  "save_checkpoints": false,
+  "profile_memory": true,
+  "profile_gpu": true
+} 

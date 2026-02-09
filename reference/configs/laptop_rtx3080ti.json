@@ -1,0 +1,13 @@
+{
+  "name": "laptop_rtx3080ti",
+  "batch_sizes": [4, 8, 16],
+  "num_workers_list": [2, 4, 6, 8],
+  "epochs": 3,
+  "channels": "vh,vv,bathymetry",
+  "learning_rate": 0.005,
+  "distributed": false,
+  "world_size": 1,
+  "save_checkpoints": false,
+  "profile_memory": true,
+  "profile_gpu": true
+} 
