@@ -2,13 +2,14 @@ import glob
 import json
 import os
 import time
+from functools import partial
+from multiprocessing import Pool
 from pathlib import Path
 from collections import defaultdict
 
 import numpy as np
 import pandas as pd
 import rasterio
-import ray
 import torch
 from rasterio.enums import Resampling
 
@@ -297,20 +298,25 @@ class OptimizedXView3Dataset:
 
     def chip_and_get_pixel_detections(self):
         """Preprocess all scenes to chip xView3 dataset images"""
-        # Implementation same as original - this is called during initialization
+        # Implementation using multiprocessing.Pool instead of Ray for Windows compatibility
         start = time.time()
         if self.num_workers > 1:
-            ray.init()
-            remote_process_scene = ray.remote(process_scene)
-            jobs = []
-            for jj, scene_id in enumerate(self.scenes):
-                jobs.append(
-                    remote_process_scene.remote(
-                        scene_id, self.detections, self.channels, self.chip_size,
-                        self.chips_path, self.overwrite_preproc, self.root, self.split, jj,
-                    )
-                )
-            chip_detects = ray.get(jobs)
+            # Create partial function with fixed arguments
+            process_func = partial(
+                _process_scene_wrapper,
+                detections=self.detections,
+                channels=self.channels,
+                chip_size=self.chip_size,
+                chips_path=self.chips_path,
+                overwrite_preproc=self.overwrite_preproc,
+                root=self.root,
+                split=self.split,
+            )
+            # Create list of (scene_id, index) tuples
+            scene_args = [(scene_id, jj) for jj, scene_id in enumerate(self.scenes)]
+
+            with Pool(processes=self.num_workers) as pool:
+                chip_detects = pool.map(process_func, scene_args)
             pixel_detections = pd.concat(chip_detects)
         else:
             chip_detects = []
@@ -330,4 +336,15 @@ class OptimizedXView3Dataset:
 
 
 # Import the original process_scene function
-from dataloader import process_scene 
+from dataloader import process_scene
+
+
+def _process_scene_wrapper(args, detections, channels, chip_size, chips_path,
+                           overwrite_preproc, root, split):
+    """Wrapper for process_scene to work with multiprocessing.Pool.map"""
+    scene_id, jj = args
+    print(f"Processing scene {jj}: {scene_id}...")
+    return process_scene(
+        scene_id, detections, channels, chip_size,
+        chips_path, overwrite_preproc, root, split, jj,
+    )

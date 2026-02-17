@@ -1,0 +1,391 @@
+[
+  {
+    "name": "baseline",
+    "description": "No optimizations (baseline)",
+    "flags": [],
+    "total_time": 825.6161422729492,
+    "training_results": {
+      "total_training_time": 825.6161422729492,
+      "best_val_map": 0.06353907406398566,
+      "training_metrics": [
+        {
+          "epoch": 0,
+          "train_loss": 0.20830911502528648,
+          "val_map": 0.059443267995732775,
+          "epoch_time": 393.0333173274994,
+          "learning_rate": 0.005
+        },
+        {
+          "epoch": 1,
+          "train_loss": 0.04708022735945773,
+          "val_map": 0.06353907406398566,
+          "epoch_time": 429.804701089859,
+          "learning_rate": 0.005
+        }
+      ],
+      "args": {
+        "train_data_root": "D:/xview3/tiny/train",
+        "val_data_root": "D:/xview3/tiny/validation",
+        "train_label_file": "D:/xview3/labels/train.csv",
+        "val_label_file": "D:/xview3/labels/validation.csv",
+        "train_chips_path": "D:/xview3/tiny/chips/train",
+        "val_chips_path": "D:/xview3/tiny/chips/validation",
+        "channels": "vh,vv,bathymetry",
+        "background_frac": 0.5,
+        "epochs": 2,
+        "batch_size": 8,
+        "learning_rate": 0.005,
+        "momentum": 0.9,
+        "weight_decay": 0.0005,
+        "lr_step_size": 3,
+        "lr_gamma": 0.1,
+        "num_workers": 4,
+        "print_freq": 50,
+        "save_freq": 1,
+        "output_dir": "./benchmarks/optimization_comparison\\baseline",
+        "log_level": "INFO",
+        "log_file": null,
+        "distributed": false,
+        "dist_backend": "nccl",
+        "dist_url": "tcp://localhost:23456",
+        "world_size": 1,
+        "resume": false,
+        "use_amp": false,
+        "use_compile": false,
+        "compile_mode": "default",
+        "cudnn_benchmark": false,
+        "persistent_workers": false,
+        "prefetch_factor": 2,
+        "channels_last": false
+      }
+    },
+    "return_code": 0
+  },
+  {
+    "name": "amp",
+    "description": "Automatic Mixed Precision (FP16)",
+    "flags": [
+      "--use_amp"
+    ],
+    "total_time": 615.0775122642517,
+    "training_results": {
+      "total_training_time": 615.0775122642517,
+      "best_val_map": 0.03609347257251218,
+      "training_metrics": [
+        {
+          "epoch": 0,
+          "train_loss": 0.1897482111476935,
+          "val_map": 0.03609347257251218,
+          "epoch_time": 300.7954478263855,
+          "learning_rate": 0.005
+        },
+        {
+          "epoch": 1,
+          "train_loss": 0.05172046572328187,
+          "val_map": 0.03370667492722615,
+          "epoch_time": 311.81129908561707,
+          "learning_rate": 0.005
+        }
+      ],
+      "args": {
+        "train_data_root": "D:/xview3/tiny/train",
+        "val_data_root": "D:/xview3/tiny/validation",
+        "train_label_file": "D:/xview3/labels/train.csv",
+        "val_label_file": "D:/xview3/labels/validation.csv",
+        "train_chips_path": "D:/xview3/tiny/chips/train",
+        "val_chips_path": "D:/xview3/tiny/chips/validation",
+        "channels": "vh,vv,bathymetry",
+        "background_frac": 0.5,
+        "epochs": 2,
+        "batch_size": 8,
+        "learning_rate": 0.005,
+        "momentum": 0.9,
+        "weight_decay": 0.0005,
+        "lr_step_size": 3,
+        "lr_gamma": 0.1,
+        "num_workers": 4,
+        "print_freq": 50,
+        "save_freq": 1,
+        "output_dir": "./benchmarks/optimization_comparison\\amp",
+        "log_level": "INFO",
+        "log_file": null,
+        "distributed": false,
+        "dist_backend": "nccl",
+        "dist_url": "tcp://localhost:23456",
+        "world_size": 1,
+        "resume": false,
+        "use_amp": true,
+        "use_compile": false,
+        "compile_mode": "default",
+        "cudnn_benchmark": false,
+        "persistent_workers": false,
+        "prefetch_factor": 2,
+        "channels_last": false
+      }
+    },
+    "return_code": 0
+  },
+  {
+    "name": "cudnn_benchmark",
+    "description": "cudnn.benchmark auto-tuning",
+    "flags": [
+      "--cudnn_benchmark"
+    ],
+    "total_time": 30305.961929798126,
+    "training_results": {
+      "total_training_time": 30305.961929798126,
+      "best_val_map": 0.06565111996218584,
+      "training_metrics": [
+        {
+          "epoch": 0,
+          "train_loss": 0.19787454572148047,
+          "val_map": 0.04368285926389644,
+          "epoch_time": 30072.586396694183,
+          "learning_rate": 0.005
+        },
+        {
+          "epoch": 1,
+          "train_loss": 0.05517616778110655,
+          "val_map": 0.06565111996218584,
+          "epoch_time": 231.29101181030273,
+          "learning_rate": 0.005
+        }
+      ],
+      "args": {
+        "train_data_root": "D:/xview3/tiny/train",
+        "val_data_root": "D:/xview3/tiny/validation",
+        "train_label_file": "D:/xview3/labels/train.csv",
+        "val_label_file": "D:/xview3/labels/validation.csv",
+        "train_chips_path": "D:/xview3/tiny/chips/train",
+        "val_chips_path": "D:/xview3/tiny/chips/validation",
+        "channels": "vh,vv,bathymetry",
+        "background_frac": 0.5,
+        "epochs": 2,
+        "batch_size": 8,
+        "learning_rate": 0.005,
+        "momentum": 0.9,
+        "weight_decay": 0.0005,
+        "lr_step_size": 3,
+        "lr_gamma": 0.1,
+        "num_workers": 4,
+        "print_freq": 50,
+        "save_freq": 1,
+        "output_dir": "./benchmarks/optimization_comparison\\cudnn_benchmark",
+        "log_level": "INFO",
+        "log_file": null,
+        "distributed": false,
+        "dist_backend": "nccl",
+        "dist_url": "tcp://localhost:23456",
+        "world_size": 1,
+        "resume": false,
+        "use_amp": false,
+        "use_compile": false,
+        "compile_mode": "default",
+        "cudnn_benchmark": true,
+        "persistent_workers": false,
+        "prefetch_factor": 2,
+        "channels_last": false
+      }
+    },
+    "return_code": 0
+  },
+  {
+    "name": "persistent_workers",
+    "description": "Persistent DataLoader workers",
+    "flags": [
+      "--persistent_workers",
+      "--prefetch_factor",
+      "4"
+    ],
+    "total_time": 432.5334610939026,
+    "training_results": {
+      "total_training_time": 432.5334610939026,
+      "best_val_map": 0.05794705272095428,
+      "training_metrics": [
+        {
+          "epoch": 0,
+          "train_loss": 0.22657555411860814,
+          "val_map": 0.04551128575451934,
+          "epoch_time": 227.80874466896057,
+          "learning_rate": 0.005
+        },
+        {
+          "epoch": 1,
+          "train_loss": 0.04797188308819806,
+          "val_map": 0.05794705272095428,
+          "epoch_time": 202.63636779785156,
+          "learning_rate": 0.005
+        }
+      ],
+      "args": {
+        "train_data_root": "D:/xview3/tiny/train",
+        "val_data_root": "D:/xview3/tiny/validation",
+        "train_label_file": "D:/xview3/labels/train.csv",
+        "val_label_file": "D:/xview3/labels/validation.csv",
+        "train_chips_path": "D:/xview3/tiny/chips/train",
+        "val_chips_path": "D:/xview3/tiny/chips/validation",
+        "channels": "vh,vv,bathymetry",
+        "background_frac": 0.5,
+        "epochs": 2,
+        "batch_size": 8,
+        "learning_rate": 0.005,
+        "momentum": 0.9,
+        "weight_decay": 0.0005,
+        "lr_step_size": 3,
+        "lr_gamma": 0.1,
+        "num_workers": 4,
+        "print_freq": 50,
+        "save_freq": 1,
+        "output_dir": "./benchmarks/optimization_comparison\\persistent_workers",
+        "log_level": "INFO",
+        "log_file": null,
+        "distributed": false,
+        "dist_backend": "nccl",
+        "dist_url": "tcp://localhost:23456",
+        "world_size": 1,
+        "resume": false,
+        "use_amp": false,
+        "use_compile": false,
+        "compile_mode": "default",
+        "cudnn_benchmark": false,
+        "persistent_workers": true,
+        "prefetch_factor": 4,
+        "channels_last": false
+      }
+    },
+    "return_code": 0
+  },
+  {
+    "name": "amp_cudnn",
+    "description": "AMP + cudnn.benchmark",
+    "flags": [
+      "--use_amp",
+      "--cudnn_benchmark"
+    ],
+    "total_time": 361.91446018218994,
+    "training_results": {
+      "total_training_time": 361.91446018218994,
+      "best_val_map": 0.052949045185534546,
+      "training_metrics": [
+        {
+          "epoch": 0,
+          "train_loss": 0.22308514091329507,
+          "val_map": 0.040556585745649444,
+          "epoch_time": 185.10060691833496,
+          "learning_rate": 0.005
+        },
+        {
+          "epoch": 1,
+          "train_loss": 0.054557281523011626,
+          "val_map": 0.052949045185534546,
+          "epoch_time": 174.80532360076904,
+          "learning_rate": 0.005
+        }
+      ],
+      "args": {
+        "train_data_root": "D:/xview3/tiny/train",
+        "val_data_root": "D:/xview3/tiny/validation",
+        "train_label_file": "D:/xview3/labels/train.csv",
+        "val_label_file": "D:/xview3/labels/validation.csv",
+        "train_chips_path": "D:/xview3/tiny/chips/train",
+        "val_chips_path": "D:/xview3/tiny/chips/validation",
+        "channels": "vh,vv,bathymetry",
+        "background_frac": 0.5,
+        "epochs": 2,
+        "batch_size": 8,
+        "learning_rate": 0.005,
+        "momentum": 0.9,
+        "weight_decay": 0.0005,
+        "lr_step_size": 3,
+        "lr_gamma": 0.1,
+        "num_workers": 4,
+        "print_freq": 50,
+        "save_freq": 1,
+        "output_dir": "./benchmarks/optimization_comparison\\amp_cudnn",
+        "log_level": "INFO",
+        "log_file": null,
+        "distributed": false,
+        "dist_backend": "nccl",
+        "dist_url": "tcp://localhost:23456",
+        "world_size": 1,
+        "resume": false,
+        "use_amp": true,
+        "use_compile": false,
+        "compile_mode": "default",
+        "cudnn_benchmark": true,
+        "persistent_workers": false,
+        "prefetch_factor": 2,
+        "channels_last": false
+      }
+    },
+    "return_code": 0
+  },
+  {
+    "name": "amp_cudnn_workers",
+    "description": "AMP + cudnn + persistent workers",
+    "flags": [
+      "--use_amp",
+      "--cudnn_benchmark",
+      "--persistent_workers",
+      "--prefetch_factor",
+      "4"
+    ],
+    "total_time": 421.2641143798828,
+    "training_results": {
+      "total_training_time": 421.2641143798828,
+      "best_val_map": 0.04839333062546508,
+      "training_metrics": [
+        {
+          "epoch": 0,
+          "train_loss": 0.23589091022463085,
+          "val_map": 0.041019460026014455,
+          "epoch_time": 270.7079746723175,
+          "learning_rate": 0.005
+        },
+        {
+          "epoch": 1,
+          "train_loss": 0.05169429989854017,
+          "val_map": 0.04839333062546508,
+          "epoch_time": 148.27361798286438,
+          "learning_rate": 0.005
+        }
+      ],
+      "args": {
+        "train_data_root": "D:/xview3/tiny/train",
+        "val_data_root": "D:/xview3/tiny/validation",
+        "train_label_file": "D:/xview3/labels/train.csv",
+        "val_label_file": "D:/xview3/labels/validation.csv",
+        "train_chips_path": "D:/xview3/tiny/chips/train",
+        "val_chips_path": "D:/xview3/tiny/chips/validation",
+        "channels": "vh,vv,bathymetry",
+        "background_frac": 0.5,
+        "epochs": 2,
+        "batch_size": 8,
+        "learning_rate": 0.005,
+        "momentum": 0.9,
+        "weight_decay": 0.0005,
+        "lr_step_size": 3,
+        "lr_gamma": 0.1,
+        "num_workers": 4,
+        "print_freq": 50,
+        "save_freq": 1,
+        "output_dir": "./benchmarks/optimization_comparison\\amp_cudnn_workers",
+        "log_level": "INFO",
+        "log_file": null,
+        "distributed": false,
+        "dist_backend": "nccl",
+        "dist_url": "tcp://localhost:23456",
+        "world_size": 1,
+        "resume": false,
+        "use_amp": true,
+        "use_compile": false,
+        "compile_mode": "default",
+        "cudnn_benchmark": true,
+        "persistent_workers": true,
+        "prefetch_factor": 4,
+        "channels_last": false
+      }
+    },
+    "return_code": 0
+  }
+]
