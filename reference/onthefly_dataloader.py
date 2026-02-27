@@ -67,6 +67,62 @@ class SceneGroupedSampler(Sampler):
         return iter(indices)
 
 
+class SceneGroupedDistributedSampler(Sampler):
+    """
+    Distributed version of SceneGroupedSampler for multi-GPU/multi-node training.
+
+    Splits scenes across ranks so each rank owns a disjoint set of scenes,
+    then iterates chips grouped by scene within each rank's subset.
+    This keeps each rank's scene cache hot while ensuring no two ranks
+    redundantly load the same scene.
+
+    Use this in place of DistributedSampler when dataset_mode=onthefly
+    with distributed training.
+    """
+
+    def __init__(self, chip_indices, num_replicas, rank, shuffle=True, seed=0):
+        self.chip_indices = chip_indices
+        self.num_replicas = num_replicas
+        self.rank = rank
+        self.shuffle = shuffle
+        self.seed = seed
+        self._epoch = 0
+
+        # Group chip positions by scene
+        scene_to_positions = defaultdict(list)
+        for pos, (scene_id, _) in enumerate(chip_indices):
+            scene_to_positions[scene_id].append(pos)
+        self._all_scenes = list(scene_to_positions.keys())
+        self._scene_to_positions = dict(scene_to_positions)
+
+        # Assign scenes to this rank (round-robin)
+        self._my_scenes = self._all_scenes[rank::num_replicas]
+
+    def set_epoch(self, epoch):
+        self._epoch = epoch
+
+    def __len__(self):
+        return sum(len(self._scene_to_positions[s]) for s in self._my_scenes)
+
+    def __iter__(self):
+        rng = np.random.default_rng(self.seed + self._epoch)
+
+        if self.shuffle:
+            scene_order = rng.permutation(len(self._my_scenes)).tolist()
+        else:
+            scene_order = list(range(len(self._my_scenes)))
+
+        indices = []
+        for si in scene_order:
+            scene_id = self._my_scenes[si]
+            positions = self._scene_to_positions[scene_id]
+            if self.shuffle:
+                positions = rng.permutation(positions).tolist()
+            indices.extend(positions)
+
+        return iter(indices)
+
+
 def _compute_grid_coords(height, width, chip_size):
     """
     Compute chip grid coordinates matching the existing row-major ordering

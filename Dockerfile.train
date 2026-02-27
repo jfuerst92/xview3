@@ -1,0 +1,43 @@
+# xView3 Training Container
+# Designed for multi-GPU/multi-node training on SLURM clusters.
+# Launch with torchrun; see scripts/slurm_train.sh for the job script.
+#
+# Build:
+#   docker build -f Dockerfile.train -t xview3-train:latest .
+#
+# Convert to Singularity SIF (on the cluster):
+#   singularity build xview3-train.sif docker-daemon://xview3-train:latest
+#   # or pull from a registry:
+#   singularity build xview3-train.sif docker://ghcr.io/yourorg/xview3-train:latest
+
+FROM nvcr.io/nvidia/pytorch:24.05-py3
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# System dependencies for rasterio/GDAL
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgdal-dev \
+    gdal-bin \
+    libsm6 \
+    libxext6 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python dependencies
+RUN pip install --no-cache-dir \
+    rasterio \
+    pycocotools \
+    scikit-image \
+    pandas \
+    ray
+
+WORKDIR /xview3
+
+# Copy reference code
+COPY reference/ ./reference/
+
+# Pre-download the Faster R-CNN backbone weights so nodes don't race to download
+RUN python -c "import torchvision; torchvision.models.resnet50(weights='IMAGENET1K_V1')" && \
+    python -c "import torchvision; torchvision.models.detection.fasterrcnn_resnet50_fpn(weights='DEFAULT')"
+
+# Default entrypoint — override with your actual train command in the SLURM script
+ENTRYPOINT ["python", "reference/train.py"]

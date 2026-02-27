@@ -32,7 +32,7 @@ from torch.utils.data import DataLoader, DistributedSampler
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from optimized_dataloader import OptimizedXView3Dataset
-from onthefly_dataloader import OnTheFlyXView3Dataset, SceneGroupedSampler
+from onthefly_dataloader import OnTheFlyXView3Dataset, SceneGroupedSampler, SceneGroupedDistributedSampler
 from utils import collate_fn, xView3BaselineModel
 from engine import train_one_epoch, evaluate
 
@@ -64,17 +64,27 @@ def setup_logging(log_level: str, log_file: Optional[str] = None, rank: int = 0)
 
 
 def setup_distributed(rank: int, world_size: int, args) -> None:
-    """Setup distributed training"""
-    os.environ['MASTER_ADDR'] = args.dist_url.split(':')[0]
-    os.environ['MASTER_PORT'] = args.dist_url.split(':')[1]
-    
-    # Initialize the process group
-    dist.init_process_group(
-        backend=args.dist_backend,
-        init_method=args.dist_url,
-        world_size=world_size,
-        rank=rank
-    )
+    """Setup distributed training.
+
+    Supports two launch modes:
+    - torchrun / torch.distributed.run (multi-node SLURM): env vars
+      RANK, LOCAL_RANK, WORLD_SIZE, MASTER_ADDR, MASTER_PORT are set
+      by the launcher; use init_method='env://'.
+    - mp.spawn (single-node): use the --dist_url TCP address.
+    """
+    if 'RANK' in os.environ and 'WORLD_SIZE' in os.environ:
+        # Launched by torchrun — env vars already set, just init the group
+        dist.init_process_group(backend=args.dist_backend, init_method='env://')
+    else:
+        # Launched by mp.spawn — set env vars from --dist_url
+        os.environ['MASTER_ADDR'] = args.dist_url.split(':')[0]
+        os.environ['MASTER_PORT'] = args.dist_url.split(':')[1]
+        dist.init_process_group(
+            backend=args.dist_backend,
+            init_method=args.dist_url,
+            world_size=world_size,
+            rank=rank,
+        )
 
 
 def cleanup_distributed() -> None:
@@ -84,9 +94,13 @@ def cleanup_distributed() -> None:
 
 
 def get_device(rank: int) -> torch.device:
-    """Get device for current process"""
+    """Get device for current process.
+    When launched by torchrun, LOCAL_RANK is the per-node GPU index.
+    When launched by mp.spawn, rank is already the local GPU index.
+    """
     if torch.cuda.is_available():
-        device = torch.device(f'cuda:{rank}')
+        local_rank = int(os.environ.get('LOCAL_RANK', rank))
+        device = torch.device(f'cuda:{local_rank}')
         torch.cuda.set_device(device)
     else:
         device = torch.device('cpu')
@@ -226,7 +240,17 @@ def create_data_loaders(
     """Create training and validation data loaders"""
     logger = logging.getLogger(__name__)
     
-    if args.distributed:
+    if args.distributed and args.dataset_mode == "onthefly":
+        # Scene-grouped distributed sampler: each rank owns a disjoint subset
+        # of scenes so the LRU cache stays hot on every GPU
+        train_sampler = SceneGroupedDistributedSampler(
+            train_data.chip_indices, num_replicas=world_size, rank=rank, shuffle=True
+        )
+        val_sampler = SceneGroupedDistributedSampler(
+            val_data.chip_indices, num_replicas=world_size, rank=rank, shuffle=False
+        )
+        logger.info("Using SceneGroupedDistributedSampler for distributed on-the-fly loading")
+    elif args.distributed:
         train_sampler = DistributedSampler(
             train_data, num_replicas=world_size, rank=rank, shuffle=True
         )
@@ -234,8 +258,6 @@ def create_data_loaders(
             val_data, num_replicas=world_size, rank=rank, shuffle=False
         )
     elif args.dataset_mode == "onthefly":
-        # Scene-grouped sampler: iterate all chips from each scene consecutively
-        # so the LRU scene cache stays hot and avoids repeated 1+ GB TIF reloads
         train_sampler = SceneGroupedSampler(train_data.chip_indices, shuffle=True)
         val_sampler = SceneGroupedSampler(val_data.chip_indices, shuffle=False)
         logger.info("Using SceneGroupedSampler for on-the-fly data loading")
@@ -656,19 +678,26 @@ def main():
     logger.info("Starting xView3 training")
     logger.info(f"Arguments: {vars(args)}")
     
-    # Determine number of GPUs
+    # Determine number of GPUs / launch mode
     if args.distributed:
         world_size = args.world_size
     else:
         world_size = 1
-    
-    # Start training
-    if args.distributed and world_size > 1:
+
+    # torchrun sets RANK + LOCAL_RANK env vars before this process starts.
+    # In that case each process is already its own rank — skip mp.spawn.
+    torchrun_launch = 'RANK' in os.environ and 'LOCAL_RANK' in os.environ
+
+    if torchrun_launch:
+        rank = int(os.environ['RANK'])
+        logger.info(f"torchrun launch detected: rank={rank}, world_size={os.environ.get('WORLD_SIZE', '?')}")
+        main_worker(rank, int(os.environ.get('WORLD_SIZE', world_size)), args)
+    elif args.distributed and world_size > 1:
         mp.spawn(
             main_worker,
             args=(world_size, args),
             nprocs=world_size,
-            join=True
+            join=True,
         )
     else:
         main_worker(0, 1, args)
