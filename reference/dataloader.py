@@ -98,33 +98,43 @@ def process_scene(
     files["mask"] = Path(files["vh"]).parent / "owiMask.tif"
 
     imgs, chips, grids = {}, {}, {}
+    ref_shape = None  # Reference shape from first channel
 
     # For each channel, if it is already chipped, do not re-chip
     for fl in channels:
         temp_folder = Path(chips_path) / scene_id / fl
         if os.path.exists(temp_folder) and (not overwrite_preproc):
             print(f"Using existing preprocessed {fl} data for scene {scene_id}")
+            # Still need reference shape from first channel for resampling
+            if fl == channels[0] and ref_shape is None:
+                src = rasterio.open(files[fl])
+                ref_shape = src.read(1).shape
+                src.close()
             continue
         else:
             os.makedirs(temp_folder, exist_ok=True)
         src = rasterio.open(files[fl])
         imgs[fl] = src.read(1)
 
+        # Track reference shape from first channel
+        if fl == channels[0]:
+            ref_shape = imgs[fl].shape
+
         # If not same size as first channel, resample before chipping
         # to ensure chips from different channels are co-registered
-        if not imgs[fl].shape == imgs[channels[0]].shape:
+        if ref_shape is not None and imgs[fl].shape != ref_shape:
             imgs[fl] = src.read(
                 out_shape=(
-                    imgs[channels[0]].shape[0],
-                    imgs[channels[0]].shape[1],
+                    ref_shape[0],
+                    ref_shape[1],
                 ),
                 resampling=Resampling.bilinear,
             ).squeeze()
         try:
-            assert imgs[fl].shape == imgs[channels[0]].shape
+            assert imgs[fl].shape == ref_shape
         except AssertionError as e:
             print(f"imgs[fl].shape = {imgs[fl].shape}")
-            print(f"imgs[channels[0]].shape = {imgs[channels[0]].shape}")
+            print(f"ref_shape = {ref_shape}")
             raise AssertionError()
 
         # Pad the raster to be a multiple of the chip size

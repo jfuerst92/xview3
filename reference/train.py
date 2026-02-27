@@ -32,6 +32,7 @@ from torch.utils.data import DataLoader, DistributedSampler
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from optimized_dataloader import OptimizedXView3Dataset
+from onthefly_dataloader import OnTheFlyXView3Dataset, SceneGroupedSampler
 from utils import collate_fn, xView3BaselineModel
 from engine import train_one_epoch, evaluate
 
@@ -98,43 +99,90 @@ def create_datasets(args) -> tuple:
     
     channels = [c.strip() for c in args.channels.split(',')]
     
-    logger.info(f"Creating training dataset with channels: {channels}")
-    train_data = OptimizedXView3Dataset(
-        root=args.train_data_root,
-        transforms=None,
-        split="train",
-        detect_file=args.train_label_file,
-        scene_list=None,
-        chips_path=args.train_chips_path,
-        channels=channels,
-        chip_size=800,
-        overwrite_preproc=False,
-        bbox_size=5,
-        background_frac=args.background_frac,
-        background_min=3,
-        ais_only=True,
-        num_workers=1,  # Will be handled by DataLoader
-        min_max_norm=True,
-    )
-    
-    logger.info(f"Creating validation dataset with channels: {channels}")
-    val_data = OptimizedXView3Dataset(
-        root=args.val_data_root,
-        transforms=None,
-        split="val",
-        detect_file=args.val_label_file,
-        scene_list=None,
-        chips_path=args.val_chips_path,
-        channels=channels,
-        chip_size=800,
-        overwrite_preproc=False,
-        bbox_size=5,
-        background_frac=0.0,  # No background chips for validation
-        background_min=3,
-        ais_only=True,
-        num_workers=1,  # Will be handled by DataLoader
-        min_max_norm=True,
-    )
+    # Load scene lists if provided
+    train_scene_list = None
+    if args.train_scene_list:
+        with open(args.train_scene_list) as f:
+            train_scene_list = [line.strip() for line in f if line.strip()]
+        logger.info(f"Using {len(train_scene_list)} training scenes from {args.train_scene_list}")
+
+    val_scene_list = None
+    if args.val_scene_list:
+        with open(args.val_scene_list) as f:
+            val_scene_list = [line.strip() for line in f if line.strip()]
+        logger.info(f"Using {len(val_scene_list)} validation scenes from {args.val_scene_list}")
+
+    if args.dataset_mode == "onthefly":
+        logger.info(f"Creating ON-THE-FLY training dataset with channels: {channels}")
+        train_data = OnTheFlyXView3Dataset(
+            root=args.train_data_root,
+            transforms=None,
+            split="train",
+            detect_file=args.train_label_file,
+            scene_list=train_scene_list,
+            channels=channels,
+            chip_size=800,
+            bbox_size=5,
+            background_frac=args.background_frac,
+            background_min=3,
+            ais_only=True,
+            min_max_norm=True,
+            scene_cache_size=args.scene_cache_size,
+        )
+
+        logger.info(f"Creating ON-THE-FLY validation dataset with channels: {channels}")
+        val_data = OnTheFlyXView3Dataset(
+            root=args.val_data_root,
+            transforms=None,
+            split="val",
+            detect_file=args.val_label_file,
+            scene_list=val_scene_list,
+            channels=channels,
+            chip_size=800,
+            bbox_size=5,
+            background_frac=0.0,
+            ais_only=True,
+            min_max_norm=True,
+            scene_cache_size=args.scene_cache_size,
+        )
+    else:
+        logger.info(f"Creating training dataset with channels: {channels}")
+        train_data = OptimizedXView3Dataset(
+            root=args.train_data_root,
+            transforms=None,
+            split="train",
+            detect_file=args.train_label_file,
+            scene_list=train_scene_list,
+            chips_path=args.train_chips_path,
+            channels=channels,
+            chip_size=800,
+            overwrite_preproc=False,
+            bbox_size=5,
+            background_frac=args.background_frac,
+            background_min=3,
+            ais_only=True,
+            num_workers=1,
+            min_max_norm=True,
+        )
+
+        logger.info(f"Creating validation dataset with channels: {channels}")
+        val_data = OptimizedXView3Dataset(
+            root=args.val_data_root,
+            transforms=None,
+            split="val",
+            detect_file=args.val_label_file,
+            scene_list=val_scene_list,
+            chips_path=args.val_chips_path,
+            channels=channels,
+            chip_size=800,
+            overwrite_preproc=False,
+            bbox_size=5,
+            background_frac=0.0,
+            background_min=3,
+            ais_only=True,
+            num_workers=1,
+            min_max_norm=True,
+        )
     
     logger.info(f"Training dataset size: {len(train_data)}")
     logger.info(f"Validation dataset size: {len(val_data)}")
@@ -147,17 +195,18 @@ def create_model(args, num_classes: int, device: torch.device) -> torch.nn.Modul
     logger = logging.getLogger(__name__)
     
     # Load or compute image statistics
-    chips_path = args.train_chips_path
-    if not os.path.exists(f'{chips_path}/data_means.npy'):
+    # Use output_dir for stats storage (chips_path may be "unused" in onthefly mode)
+    stats_path = args.output_dir
+    if not os.path.exists(f'{stats_path}/data_means.npy'):
         logger.info("Computing image statistics...")
         image_mean = [0.5] * len(args.channels.split(','))
         image_std = [0.1] * len(args.channels.split(','))
-        np.save(f'{chips_path}/data_means.npy', image_mean)
-        np.save(f'{chips_path}/data_std.npy', image_std)
+        np.save(f'{stats_path}/data_means.npy', image_mean)
+        np.save(f'{stats_path}/data_std.npy', image_std)
     else:
         logger.info("Loading existing image statistics...")
-        image_mean = np.load(f'{chips_path}/data_means.npy')
-        image_std = np.load(f'{chips_path}/data_std.npy')
+        image_mean = np.load(f'{stats_path}/data_means.npy')
+        image_std = np.load(f'{stats_path}/data_std.npy')
     
     logger.info(f"Creating model with {num_classes} classes and {len(args.channels.split(','))} channels")
     model = xView3BaselineModel(
@@ -184,6 +233,12 @@ def create_data_loaders(
         val_sampler = DistributedSampler(
             val_data, num_replicas=world_size, rank=rank, shuffle=False
         )
+    elif args.dataset_mode == "onthefly":
+        # Scene-grouped sampler: iterate all chips from each scene consecutively
+        # so the LRU scene cache stays hot and avoids repeated 1+ GB TIF reloads
+        train_sampler = SceneGroupedSampler(train_data.chip_indices, shuffle=True)
+        val_sampler = SceneGroupedSampler(val_data.chip_indices, shuffle=False)
+        logger.info("Using SceneGroupedSampler for on-the-fly data loading")
     else:
         train_sampler = torch.utils.data.RandomSampler(train_data)
         val_sampler = torch.utils.data.SequentialSampler(val_data)
@@ -507,6 +562,10 @@ def main():
                        help='Validation chips directory')
     parser.add_argument('--channels', type=str, default='vh,vv,bathymetry',
                        help='Comma-separated list of channels')
+    parser.add_argument('--train_scene_list', type=str, default=None,
+                       help='Text file with training scene IDs (one per line). If not provided, uses all scenes.')
+    parser.add_argument('--val_scene_list', type=str, default=None,
+                       help='Text file with validation scene IDs (one per line). If not provided, uses all scenes.')
     parser.add_argument('--background_frac', type=float, default=0.5,
                        help='Fraction of background chips for training')
     
@@ -574,6 +633,13 @@ def main():
                        help='Number of batches to prefetch per worker')
     parser.add_argument('--channels_last', action='store_true',
                        help='Use channels_last memory format for better GPU performance')
+
+    # Dataset mode
+    parser.add_argument('--dataset_mode', type=str, default='prechipped',
+                       choices=['prechipped', 'onthefly'],
+                       help='Dataset mode: prechipped (.npy chips) or onthefly (read GeoTIFFs directly)')
+    parser.add_argument('--scene_cache_size', type=int, default=3,
+                       help='Number of scenes to cache per worker in onthefly mode')
 
     args = parser.parse_args()
     

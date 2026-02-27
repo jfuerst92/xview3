@@ -1,0 +1,65 @@
+{
+  "args": {
+    "chipped_root": "D:/xview3/tiny/train",
+    "chipped_chips": "D:/xview3/tiny/chips/train",
+    "raw_root": "D:/xview3/train",
+    "label_file": "D:/xview3/labels/train.csv",
+    "output_dir": "C:/Users/fuers/projects/xview3-reference/benchmarks/dataloader_comparison",
+    "num_scenes": 5,
+    "batch_size": 4,
+    "num_workers": 0,
+    "channels": "vh,vv,bathymetry",
+    "num_batches": 30,
+    "epochs": 2,
+    "scene_cache_size": 5,
+    "skip_training": false
+  },
+  "chipped_scenes": [
+    "05bc615a9b0e1159t",
+    "2899cfb18883251bt",
+    "72dba3e82f782f67t",
+    "cbe4ad26fe73f118t",
+    "e98ca5aba8849b06t"
+  ],
+  "raw_scenes": [
+    "7060a820c566d5d3t",
+    "70a79f2bc9105cfct",
+    "70c22e83de0db11dt",
+    "70f29a17a192ae59t",
+    "736395c42c565615t"
+  ],
+  "data_only": {
+    "prechipped": {
+      "total_samples": 120,
+      "elapsed_sec": 2.976,
+      "samples_per_sec": 40.33
+    },
+    "onthefly": {
+      "total_samples": 120,
+      "elapsed_sec": 4.818,
+      "samples_per_sec": 24.91
+    }
+  },
+  "training": {
+    "prechipped": {
+      "epochs": 2,
+      "total_samples": 1286,
+      "total_time_sec": 163.582,
+      "epoch_times_sec": [
+        86.025,
+        77.557
+      ],
+      "avg_samples_per_sec": 7.86
+    },
+    "onthefly": {
+      "epochs": 2,
+      "total_samples": 748,
+      "total_time_sec": 106.805,
+      "epoch_times_sec": [
+        56.527,
+        50.278
+      ],
+      "avg_samples_per_sec": 7.0
+    }
+  }
+}

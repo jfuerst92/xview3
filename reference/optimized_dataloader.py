@@ -317,6 +317,11 @@ class OptimizedXView3Dataset:
 
             with Pool(processes=self.num_workers) as pool:
                 chip_detects = pool.map(process_func, scene_args)
+            # Filter out failed scenes (None results)
+            failed = sum(1 for r in chip_detects if r is None)
+            chip_detects = [r for r in chip_detects if r is not None]
+            if failed:
+                print(f"WARNING: {failed} scenes failed during preprocessing")
             pixel_detections = pd.concat(chip_detects)
         else:
             chip_detects = []
@@ -344,7 +349,11 @@ def _process_scene_wrapper(args, detections, channels, chip_size, chips_path,
     """Wrapper for process_scene to work with multiprocessing.Pool.map"""
     scene_id, jj = args
     print(f"Processing scene {jj}: {scene_id}...")
-    return process_scene(
-        scene_id, detections, channels, chip_size,
-        chips_path, overwrite_preproc, root, split, jj,
-    )
+    try:
+        return process_scene(
+            scene_id, detections, channels, chip_size,
+            chips_path, overwrite_preproc, root, split, jj,
+        )
+    except Exception as e:
+        print(f"ERROR processing scene {jj} ({scene_id}): {e}")
+        return None
